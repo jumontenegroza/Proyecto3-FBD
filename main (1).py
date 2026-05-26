@@ -21,7 +21,7 @@ client = MongoClient(os.environ["MONGO_URI"])
 #client = MongoClient("")
 # TODO: conectarse a la base de datos Admonsis  
 # db = client["ISIS*******"]
-db = client[""]
+db = client["ISIS"]
 
 
 @app.get("/")
