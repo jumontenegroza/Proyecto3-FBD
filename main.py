@@ -14,11 +14,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# os.environ para despliegue. Descomente cuando ya probó todo local.
 client = MongoClient(os.environ["MONGO_URI"])
-
-# TODO: conectarse a la base de datos del grupo
-# db = client["ISIS2304D31202610"]
 db = client["ISIS2304D31202610"]
 
 
@@ -27,24 +23,23 @@ def inicio():
     return {"estado": "API Dann-Alpes funcionando correctamente"}
 
 
-# ── GET /api/hoteles/{hotel_direccion}/resenas ──────────────────
-# Retorna todas las reseñas publicadas del hotel desde la colección 'resenas'
-@app.get('/api/hoteles/{hotel_direccion}/resenas')
-def get_resenas(hotel_direccion: str):
-    resenas = list(db.resenas.find(
-        {"hotel_direccion": hotel_direccion, "estado": "publicada"},
+# ── GET /api/hoteles/{hotel_id}/resenas ─────────────────────────
+# Retorna todas las reseñas publicadas del hotel
+@app.get('/api/hoteles/{hotel_id}/resenas')
+def get_resenas(hotel_id: int):
+    resenas = list(db["reseñas"].find(
+        {"hotel_id": hotel_id, "estado": "publicada"},
         {"_id": 0}
     ))
     return resenas
 
 
-# ── POST /api/hoteles/{hotel_direccion}/resenas ─────────────────
-# Inserta una reseña en la colección 'resenas'
-# Verifica que la reserva esté completada y que no exista reseña previa
-@app.post('/api/hoteles/{hotel_direccion}/resenas')
-def post_resena(hotel_direccion: str, datos: dict):
+# ── POST /api/hoteles/{hotel_id}/resenas ────────────────────────
+# Inserta una reseña en la colección 'reseñas'
+@app.post('/api/hoteles/{hotel_id}/resenas')
+def post_resena(hotel_id: int, datos: dict):
     # Validar campos requeridos
-    for campo in ["cliente_doc_id", "codigo_reserva", "calificacion", "texto"]:
+    for campo in ["cliente_id", "reserva_id", "calificacion", "comentario"]:
         if campo not in datos:
             raise HTTPException(status_code=400, detail=f"Campo requerido: {campo}")
 
@@ -54,18 +49,16 @@ def post_resena(hotel_direccion: str, datos: dict):
         raise HTTPException(status_code=400, detail="La calificación debe estar entre 1 y 5.")
 
     # Verificar que la reserva exista y esté completada
-    reserva = db.reservas.find_one({"codigo_reserva": datos["codigo_reserva"]})
+    reserva = db["Reservas"].find_one({"reserva_id": datos["reserva_id"]})
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada.")
     if reserva.get("estado") != "completada":
         raise HTTPException(status_code=403, detail="Solo se pueden reseñar reservas completadas.")
-    if reserva["cliente_doc_id"] != datos["cliente_doc_id"]:
-        raise HTTPException(status_code=403, detail="Esta reserva no pertenece al cliente indicado.")
 
     # Verificar que no haya reseñado esta reserva antes
-    existente = db.resenas.find_one({
-        "codigo_reserva": datos["codigo_reserva"],
-        "cliente_doc_id": datos["cliente_doc_id"],
+    existente = db["reseñas"].find_one({
+        "reserva_id": datos["reserva_id"],
+        "cliente_id": datos["cliente_id"],
         "estado": "publicada"
     })
     if existente:
@@ -73,17 +66,16 @@ def post_resena(hotel_direccion: str, datos: dict):
 
     # Construir y guardar la reseña
     resena = {
-        "id_resena":       str(uuid4()),
-        "hotel_direccion": hotel_direccion,
-        "cliente_doc_id":  datos["cliente_doc_id"],
-        "codigo_reserva":  datos["codigo_reserva"],
-        "calificacion":    cal,
-        "texto":           datos["texto"],
-        "fecha_creacion":  datetime.now().isoformat(),
-        "estado":          "publicada",
-        "votos_utiles":    0,
-        "respuesta_admin": None,
+        "hotel_id":     hotel_id,
+        "cliente_id":   datos["cliente_id"],
+        "reserva_id":   datos["reserva_id"],
+        "calificacion": cal,
+        "comentario":   datos["comentario"],
+        "fecha":        datetime.now().isoformat(),
+        "estado":       "publicada",
+        "votos_utiles": 0,
+        "respuesta":    None,
     }
-    db.resenas.insert_one(resena)
+    db["reseñas"].insert_one(resena)
 
     return {"mensaje": "Reseña guardada"}
