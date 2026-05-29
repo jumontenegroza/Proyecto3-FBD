@@ -26,7 +26,7 @@ def inicio():
 # ── GET /api/hoteles/{hotel_id}/resenas ─────────────────────────
 # Retorna todas las reseñas publicadas del hotel
 @app.get('/api/hoteles/{hotel_id}/resenas')
-def get_resenas(hotel_id: int):
+def get_resenas(hotel_id: str):
     resenas = list(db["reseñas"].find(
         {"hotel_id": hotel_id, "estado": "publicada"},
         {"_id": 0}
@@ -37,7 +37,7 @@ def get_resenas(hotel_id: int):
 # ── POST /api/hoteles/{hotel_id}/resenas ────────────────────────
 # Inserta una reseña en la colección 'reseñas'
 @app.post('/api/hoteles/{hotel_id}/resenas')
-def post_resena(hotel_id: int, datos: dict):
+def post_resena(hotel_id: str, datos: dict):
     # Validar campos requeridos
     for campo in ["cliente_id", "reserva_id", "calificacion", "comentario"]:
         if campo not in datos:
@@ -45,7 +45,7 @@ def post_resena(hotel_id: int, datos: dict):
 
     # Validar calificación
     cal = datos["calificacion"]
-    if not isinstance(cal, (int, float)) or cal < 1 or cal > 5:
+    if not isinstance(cal, (str, float)) or cal < 1 or cal > 5:
         raise HTTPException(status_code=400, detail="La calificación debe estar entre 1 y 5.")
 
     # Verificar que la reserva exista y esté completada
